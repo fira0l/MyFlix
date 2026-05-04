@@ -1,222 +1,364 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { User, Mail, Camera, Save, CheckCircle, AlertCircle, Loader2, Heart, Eye, Bookmark, PlayCircle, Clock, Film, LogOut } from 'lucide-react';
+import { userAPI, movieAPI } from '../services/api';
 
 const defaultAvatars = [
-  "https://i.pravatar.cc/150?img=1",
-  "https://i.pravatar.cc/150?img=2",
-  "https://i.pravatar.cc/150?img=3",
-  "https://i.pravatar.cc/150?img=4",
+  'https://i.pravatar.cc/150?img=1',
+  'https://i.pravatar.cc/150?img=2',
+  'https://i.pravatar.cc/150?img=3',
+  'https://i.pravatar.cc/150?img=4',
+  'https://i.pravatar.cc/150?img=5',
+  'https://i.pravatar.cc/150?img=6',
+  'https://i.pravatar.cc/150?img=7',
+  'https://i.pravatar.cc/150?img=8',
 ];
 
 const Profile = () => {
-  const [email, setEmail] = useState("");
-  const [name, setName] = useState("");
-  const [avatar, setAvatar] = useState("");
+  const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState('profile');
+  const [email, setEmail] = useState('');
+  const [name, setName] = useState('');
+  const [avatar, setAvatar] = useState('');
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [stats, setStats] = useState({ liked: 0, watched: 0, watchlist: 0, continueWatching: 0, recentlyWatched: 0, added: 0 });
 
   useEffect(() => {
-    const user = JSON.parse(localStorage.getItem("user"));
+    const user = JSON.parse(localStorage.getItem('user'));
     if (user) {
-      setEmail(user.email || "");
-      setName(user.name || "");
+      setEmail(user.email || '');
+      setName(user.name || '');
       setAvatar(user.avatar || defaultAvatars[0]);
     }
+
+    // Load stats
+    Promise.all([
+      userAPI.getLikedMovies(),
+      userAPI.getWatchedMovies(),
+      userAPI.getWatchlist(),
+      userAPI.getContinueWatching(),
+      userAPI.getRecentlyWatched(),
+      movieAPI.getAll(),
+    ]).then(([liked, watched, watchlist, continueW, recent, added]) => {
+      setStats({
+        liked: liked.length,
+        watched: watched.length,
+        watchlist: watchlist.length,
+        continueWatching: continueW.length,
+        recentlyWatched: recent.length,
+        added: added.length,
+      });
+    }).catch(() => {});
   }, []);
 
-  const validateForm = () => {
-    const newErrors = {};
-    if (!name.trim()) {
-      newErrors.name = "Name is required";
-    } else if (name.length > 50) {
-      newErrors.name = "Name must be 50 characters or less";
-    }
-    if (!avatar) {
-      newErrors.avatar = "Please select or upload an avatar";
-    }
-    return newErrors;
-  };
-
-  const handleSave = async () => {
+  const handleSave = () => {
     setErrors({});
-    const validationErrors = validateForm();
-
-    if (Object.keys(validationErrors).length > 0) {
-      setErrors(validationErrors);
-      return;
-    }
-
+    if (!name.trim()) { setErrors({ name: 'Name is required' }); return; }
+    if (name.length > 50) { setErrors({ name: 'Name must be 50 characters or less' }); return; }
     setIsLoading(true);
-    try {
-      const updatedUser = { email, name, avatar };
-      // Simulate API call
-      setTimeout(() => {
-        localStorage.setItem("user", JSON.stringify(updatedUser));
-        alert("Profile updated!");
-        setIsLoading(false);
-      }, 1500);
-    } catch (error) {
-      setErrors({ general: "Failed to update profile. Please try again." });
+    setTimeout(() => {
+      const user = JSON.parse(localStorage.getItem('user')) || {};
+      localStorage.setItem('user', JSON.stringify({ ...user, name, avatar }));
+      window.dispatchEvent(new Event('userChanged'));
+      setSaved(true);
       setIsLoading(false);
-    }
+      setTimeout(() => setSaved(false), 2500);
+    }, 1000);
   };
 
   const handleAvatarUpload = (e) => {
     const file = e.target.files[0];
-    if (file) {
-      if (!file.type.startsWith("image/")) {
-        setErrors({ avatar: "Please upload a valid image file" });
-        return;
-      }
-      if (file.size > 2 * 1024 * 1024) {
-        setErrors({ avatar: "Image size must be less than 2MB" });
-        return;
-      }
-      const reader = new FileReader();
-      reader.onload = () => setAvatar(reader.result);
-      reader.readAsDataURL(file);
-    }
+    if (!file) return;
+    if (!file.type.startsWith('image/')) { setErrors({ avatar: 'Please upload a valid image file' }); return; }
+    if (file.size > 2 * 1024 * 1024) { setErrors({ avatar: 'Image size must be less than 2MB' }); return; }
+    const reader = new FileReader();
+    reader.onload = () => setAvatar(reader.result);
+    reader.readAsDataURL(file);
   };
 
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 to-black">
-      <div className="relative bg-gray-800 p-8 rounded-2xl shadow-2xl w-full max-w-md border border-gray-700 transform transition-all hover:scale-[1.01]">
-        {/* Decorative elements */}
-        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-red-500 to-purple-600 rounded-t-2xl"></div>
-        <div className="absolute -top-2 -right-2 w-16 h-16 bg-red-600 rounded-full blur-xl opacity-20"></div>
-        <div className="absolute -bottom-2 -left-2 w-16 h-16 bg-purple-600 rounded-full blur-xl opacity-20"></div>
+  const handleLogout = () => {
+    localStorage.removeItem('user');
+    window.dispatchEvent(new Event('userChanged'));
+    navigate('/');
+  };
 
-        <div className="flex justify-center mb-6">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="h-12 w-12 text-red-500"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-            />
-          </svg>
+  const statItems = [
+    { icon: Heart, label: 'Liked', value: stats.liked, color: '#e50914' },
+    { icon: Eye, label: 'Watched', value: stats.watched, color: '#22c55e' },
+    { icon: Bookmark, label: 'Watchlist', value: stats.watchlist, color: '#3b82f6' },
+    { icon: PlayCircle, label: 'In Progress', value: stats.continueWatching, color: '#f59e0b' },
+    { icon: Clock, label: 'History', value: stats.recentlyWatched, color: '#8b5cf6' },
+    { icon: Film, label: 'Added', value: stats.added, color: '#ec4899' },
+  ];
+
+  const tabs = [
+    { id: 'profile', label: 'Profile Info' },
+    { id: 'avatar', label: 'Avatar' },
+    { id: 'stats', label: 'My Stats' },
+  ];
+
+  return (
+    <div className="min-h-screen px-6 py-8" style={{ background: 'linear-gradient(135deg, #080810 0%, #0a0a14 100%)' }}>
+      <div className="container mx-auto max-w-3xl">
+
+        {/* Profile Hero */}
+        <div className="skeu-card p-8 mb-6 relative overflow-hidden">
+          {/* Background glow */}
+          <div className="absolute top-0 right-0 w-64 h-64 rounded-full opacity-10 pointer-events-none"
+            style={{ background: 'radial-gradient(circle, #e50914, transparent)', filter: 'blur(40px)' }} />
+
+          <div className="flex flex-col sm:flex-row items-center gap-6 relative z-10">
+            {/* Avatar */}
+            <div className="relative flex-shrink-0">
+              <div className="w-24 h-24 rounded-full overflow-hidden"
+                style={{ boxShadow: '0 0 0 3px rgba(229,9,20,0.4), 0 8px 24px rgba(0,0,0,0.5)' }}>
+                {avatar ? (
+                  <img src={avatar} alt="Avatar" className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center"
+                    style={{ background: 'linear-gradient(145deg, #e50914, #b8070f)' }}>
+                    <User className="w-10 h-10 text-white" />
+                  </div>
+                )}
+              </div>
+              <div className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full flex items-center justify-center"
+                style={{ background: 'linear-gradient(145deg, #e50914, #b8070f)', boxShadow: '0 2px 8px rgba(229,9,20,0.5)' }}>
+                <Camera className="w-3.5 h-3.5 text-white" />
+              </div>
+            </div>
+
+            {/* Info */}
+            <div className="flex-1 text-center sm:text-left">
+              <h1 className="text-2xl font-black text-white mb-1">
+                {name || email.split('@')[0]}
+              </h1>
+              <p className="text-gray-400 text-sm mb-3">{email}</p>
+              <div className="flex flex-wrap gap-2 justify-center sm:justify-start">
+                <span className="px-3 py-1 rounded-full text-xs font-medium"
+                  style={{ background: 'rgba(229,9,20,0.15)', color: '#ff6b6b', border: '1px solid rgba(229,9,20,0.25)' }}>
+                  MyFlix Member
+                </span>
+                <span className="px-3 py-1 rounded-full text-xs font-medium"
+                  style={{ background: 'rgba(34,197,94,0.1)', color: '#4ade80', border: '1px solid rgba(34,197,94,0.2)' }}>
+                  ● Active
+                </span>
+              </div>
+            </div>
+
+            {/* Logout */}
+            <button
+              className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all self-start"
+              style={{ background: 'rgba(229,9,20,0.1)', border: '1px solid rgba(229,9,20,0.2)', color: '#ff6b6b' }}
+              onClick={handleLogout}
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              Logout
+            </button>
+          </div>
         </div>
 
-        <h2 className="text-3xl font-bold mb-2 text-center bg-gradient-to-r from-red-400 to-purple-500 bg-clip-text text-transparent">
-          Edit Your Profile
-        </h2>
-        <p className="text-gray-400 text-center mb-8">Update your personal details</p>
+        {/* Tabs */}
+        <div className="skeu-card p-6">
+          {/* Tab Headers */}
+          <div className="flex gap-2 p-1 rounded-xl mb-6" style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.06)' }}>
+            {tabs.map(tab => (
+              <button key={tab.id}
+                className="flex-1 py-2.5 rounded-lg text-sm font-bold transition-all"
+                style={{
+                  background: activeTab === tab.id ? 'linear-gradient(145deg, #e50914, #b8070f)' : 'transparent',
+                  color: activeTab === tab.id ? 'white' : '#6b7280',
+                  boxShadow: activeTab === tab.id ? '0 4px 12px rgba(229,9,20,0.3), inset 0 1px 0 rgba(255,255,255,0.15)' : 'none'
+                }}
+                onClick={() => setActiveTab(tab.id)}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
 
-        <div className="space-y-6">
-          {errors.general && (
-            <p className="text-red-400 text-sm text-center">{errors.general}</p>
+          {/* Profile Info Tab */}
+          {activeTab === 'profile' && (
+            <div className="space-y-5">
+              {saved && (
+                <div className="flex items-center gap-3 p-4 rounded-xl"
+                  style={{ background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.2)' }}>
+                  <CheckCircle className="w-4 h-4 text-green-400 flex-shrink-0" />
+                  <p className="text-green-400 text-sm font-medium">Profile updated successfully!</p>
+                </div>
+              )}
+
+              {errors.general && (
+                <div className="flex items-center gap-3 p-4 rounded-xl"
+                  style={{ background: 'rgba(229,9,20,0.1)', border: '1px solid rgba(229,9,20,0.2)' }}>
+                  <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
+                  <p className="text-red-400 text-sm">{errors.general}</p>
+                </div>
+              )}
+
+              {/* Display Name */}
+              <div>
+                <label className="text-gray-300 text-sm font-semibold mb-2 block">Display Name</label>
+                <div className="relative">
+                  <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
+                  <input
+                    className="skeu-input w-full pl-11 pr-4 py-3.5 text-sm"
+                    placeholder="Enter your display name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    style={{ borderColor: errors.name ? 'rgba(229,9,20,0.5)' : undefined }}
+                  />
+                </div>
+                {errors.name && (
+                  <div className="flex items-center gap-1.5 mt-1.5">
+                    <AlertCircle className="w-3.5 h-3.5 text-red-400" />
+                    <p className="text-red-400 text-xs">{errors.name}</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Email (disabled) */}
+              <div>
+                <label className="text-gray-300 text-sm font-semibold mb-2 block">Email Address</label>
+                <div className="relative">
+                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-600 pointer-events-none" />
+                  <input
+                    className="skeu-input w-full pl-11 pr-4 py-3.5 text-sm opacity-50 cursor-not-allowed"
+                    value={email}
+                    disabled
+                  />
+                </div>
+                <p className="text-gray-600 text-xs mt-1.5">Email address cannot be changed</p>
+              </div>
+
+              <button
+                className="skeu-btn w-full py-4 rounded-xl text-white font-bold flex items-center justify-center gap-2 disabled:opacity-60"
+                onClick={handleSave}
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <><Loader2 className="w-4 h-4 animate-spin" /> Saving...</>
+                ) : saved ? (
+                  <><CheckCircle className="w-4 h-4" /> Saved!</>
+                ) : (
+                  <><Save className="w-4 h-4" /> Save Changes</>
+                )}
+              </button>
+            </div>
           )}
 
-          {/* Avatar Preview */}
-          <div className="flex justify-center mb-6">
-            <div className="relative">
-              <img
-                src={avatar || defaultAvatars[0]}
-                alt="Profile avatar"
-                className="w-24 h-24 rounded-full border-2 border-gray-600 object-cover"
-              />
-              {errors.avatar && (
-                <p className="text-red-400 text-sm mt-2 text-center">{errors.avatar}</p>
-              )}
-            </div>
-          </div>
-
-          {/* Avatar Upload and Default Avatars */}
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              Profile Picture
-            </label>
-            <div className="flex items-center space-x-4 mb-4">
-              <label className="cursor-pointer bg-gray-700 hover:bg-gray-600 text-white text-sm py-2 px-4 rounded-lg transition-all">
-                Upload Image
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleAvatarUpload}
-                  className="hidden"
-                  aria-describedby={errors.avatar ? "avatar-error" : undefined}
-                />
-              </label>
-              <p className="text-sm text-gray-400">or choose a default avatar:</p>
-            </div>
-            <div className="grid grid-cols-4 gap-4">
-              {defaultAvatars.map((src) => (
-                <img
-                  key={src}
-                  src={src}
-                  alt="Default avatar"
-                  onClick={() => setAvatar(src)}
-                  className={`w-16 h-16 rounded-full cursor-pointer border-2 transition-all ${
-                    avatar === src ? "border-red-500" : "border-transparent hover:border-red-500/50"
-                  }`}
-                />
-              ))}
-            </div>
-          </div>
-
-          {/* Name Input */}
-          <div>
-            <label htmlFor="name" className="block text-sm font-medium text-gray-300 mb-1">
-              Name
-            </label>
-            <input
-              id="name"
-              type="text"
-              placeholder="Enter your name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className={`w-full p-3 rounded-lg bg-gray-700 border ${
-                errors.name ? "border-red-500" : "border-gray-600"
-              } focus:border-red-500 focus:ring-2 focus:ring-red-500/50 transition-all outline-none`}
-              aria-invalid={!!errors.name}
-              aria-describedby={errors.name ? "name-error" : undefined}
-            />
-            {errors.name && (
-              <p id="name-error" className="text-red-400 text-sm mt-1">
-                {errors.name}
-              </p>
-            )}
-          </div>
-
-          {/* Email Input (Disabled) */}
-          <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-1">
-              Email
-            </label>
-            <input
-              id="email"
-              type="email"
-              value={email}
-              disabled
-              className="w-full p-3 rounded-lg bg-gray-700 border border-gray-600 opacity-60 cursor-not-allowed"
-              aria-disabled="true"
-            />
-          </div>
-
-          {/* Save Button */}
-          <button
-            onClick={handleSave}
-            disabled={isLoading}
-            className={`w-full py-3 px-4 rounded-lg font-medium transition-all ${
-              isLoading
-                ? "bg-red-700 cursor-not-allowed"
-                : "bg-gradient-to-r from-red-600 to-purple-600 hover:from-red-700 hover:to-purple-700 shadow-lg hover:shadow-red-500/20"
-            }`}
-          >
-            {isLoading ? (
-              <div className="flex justify-center items-center">
-                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-                Saving...
+          {/* Avatar Tab */}
+          {activeTab === 'avatar' && (
+            <div className="space-y-6">
+              {/* Current Avatar Preview */}
+              <div className="flex flex-col items-center gap-4">
+                <div className="w-28 h-28 rounded-full overflow-hidden"
+                  style={{ boxShadow: '0 0 0 4px rgba(229,9,20,0.3), 0 12px 30px rgba(0,0,0,0.6)' }}>
+                  {avatar ? (
+                    <img src={avatar} alt="Avatar" className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center"
+                      style={{ background: 'linear-gradient(145deg, #e50914, #b8070f)' }}>
+                      <User className="w-12 h-12 text-white" />
+                    </div>
+                  )}
+                </div>
+                <p className="text-gray-400 text-sm">Current avatar</p>
               </div>
-            ) : (
-              "Save Profile"
-            )}
-          </button>
+
+              {errors.avatar && (
+                <div className="flex items-center gap-2 p-3 rounded-xl"
+                  style={{ background: 'rgba(229,9,20,0.1)', border: '1px solid rgba(229,9,20,0.2)' }}>
+                  <AlertCircle className="w-4 h-4 text-red-400" />
+                  <p className="text-red-400 text-xs">{errors.avatar}</p>
+                </div>
+              )}
+
+              {/* Upload Custom */}
+              <div>
+                <label className="text-gray-300 text-sm font-semibold mb-3 block">Upload Custom Avatar</label>
+                <label className="cursor-pointer block">
+                  <div className="flat-card p-6 text-center hover:border-red-500/30 transition-all"
+                    style={{ border: '2px dashed rgba(255,255,255,0.1)' }}>
+                    <Camera className="w-8 h-8 text-gray-500 mx-auto mb-2" />
+                    <p className="text-gray-400 text-sm font-medium">Click to upload image</p>
+                    <p className="text-gray-600 text-xs mt-1">JPG, PNG, GIF · Max 2MB</p>
+                  </div>
+                  <input type="file" accept="image/*" onChange={handleAvatarUpload} className="hidden" />
+                </label>
+              </div>
+
+              {/* Default Avatars */}
+              <div>
+                <label className="text-gray-300 text-sm font-semibold mb-3 block">Choose Default Avatar</label>
+                <div className="grid grid-cols-4 gap-3">
+                  {defaultAvatars.map((src, i) => (
+                    <div key={i}
+                      className="relative cursor-pointer rounded-full overflow-hidden transition-all"
+                      style={{
+                        width: '64px', height: '64px',
+                        boxShadow: avatar === src ? '0 0 0 3px #e50914, 0 4px 12px rgba(229,9,20,0.4)' : '0 2px 8px rgba(0,0,0,0.4)',
+                        transform: avatar === src ? 'scale(1.1)' : 'scale(1)',
+                      }}
+                      onClick={() => setAvatar(src)}
+                    >
+                      <img src={src} alt={`Avatar ${i + 1}`} className="w-full h-full object-cover" />
+                      {avatar === src && (
+                        <div className="absolute inset-0 flex items-center justify-center"
+                          style={{ background: 'rgba(229,9,20,0.3)' }}>
+                          <CheckCircle className="w-5 h-5 text-white" />
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <button className="skeu-btn w-full py-4 rounded-xl text-white font-bold flex items-center justify-center gap-2"
+                onClick={handleSave} disabled={isLoading}>
+                {isLoading ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving...</> : <><Save className="w-4 h-4" /> Save Avatar</>}
+              </button>
+            </div>
+          )}
+
+          {/* Stats Tab */}
+          {activeTab === 'stats' && (
+            <div className="space-y-6">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                {statItems.map(({ icon: Icon, label, value, color }, i) => (
+                  <div key={i} className="flat-card p-5 text-center hover:border-white/15 transition-all">
+                    <div className="w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-3"
+                      style={{ background: `${color}15`, border: `1px solid ${color}25` }}>
+                      <Icon className="w-5 h-5" style={{ color }} />
+                    </div>
+                    <div className="text-3xl font-black text-white mb-1">{value}</div>
+                    <div className="text-gray-500 text-xs">{label}</div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Quick Links */}
+              <div className="space-y-2">
+                <p className="text-gray-500 text-xs uppercase tracking-wider mb-3">Quick Navigation</p>
+                {[
+                  { label: 'View Watchlist & Added', to: '/watchlist' },
+                  { label: 'Continue Watching', to: '/continue-watching' },
+                  { label: 'Recently Watched', to: '/recently-watched' },
+                  { label: 'My Dashboard', to: '/dashboard' },
+                ].map((link, i) => (
+                  <button key={i}
+                    className="w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm text-gray-300 hover:text-white transition-all"
+                    style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}
+                    onClick={() => navigate(link.to)}
+                  >
+                    {link.label}
+                    <span className="text-gray-600">→</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

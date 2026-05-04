@@ -1,77 +1,84 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { FaStar, FaRegStar, FaHeart, FaRegHeart, FaEye, FaRegEye, FaShare, FaArrowLeft, FaCheck } from 'react-icons/fa';
+import { ArrowLeft, Star, Heart, Eye, Share2, Check, Play, Calendar, Film, User } from 'lucide-react';
+import { movieAPI } from '../services/api';
 
 const MovieDetail = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [liked, setLiked] = useState(false);
-  const [shared, setShared] = useState(false);
   const [watched, setWatched] = useState(false);
+  const [shared, setShared] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [cast, setCast] = useState([]);
+  const [trailer, setTrailer] = useState('');
+  const [reviews, setReviews] = useState([]);
 
   const movie = location.state;
 
   useEffect(() => {
-    if (movie) {
+    const loadMovieData = async () => {
+      if (!movie) return;
       const storedLikes = JSON.parse(localStorage.getItem('likedMovies') || '[]');
       const storedWatched = JSON.parse(localStorage.getItem('watchedMovies') || '[]');
-      
       setLiked(storedLikes.some(m => m.title === movie.title));
       setWatched(storedWatched.some(m => m.title === movie.title));
+
+      if (movie.tmdbId) {
+        try {
+          const [castData, trailerUrl, reviewsData] = await Promise.all([
+            movieAPI.getMovieCast(movie.tmdbId),
+            movieAPI.getTrailer(movie.tmdbId),
+            movieAPI.getMovieReviews(movie.tmdbId)
+          ]);
+          setCast(castData);
+          setTrailer(trailerUrl || movie.trailerUrl || '');
+          setReviews(reviewsData);
+        } catch (error) {
+          setTrailer(movie.trailerUrl || '');
+        }
+      } else {
+        setTrailer(movie.trailerUrl || '');
+      }
       setIsLoading(false);
-    }
+    };
+    loadMovieData();
   }, [movie]);
 
   if (!movie) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-900 text-white">
-        <div className="text-center">
-          <h2 className="text-2xl mb-4">Movie details not found</h2>
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => navigate(-1)}
-            className="bg-red-600 px-6 py-2 rounded-lg hover:bg-red-700 transition-colors"
-          >
+      <div className="min-h-screen flex items-center justify-center" style={{ background: '#0a0a14' }}>
+        <div className="skeu-card p-10 text-center max-w-md">
+          <Film className="w-12 h-12 text-red-500 mx-auto mb-4" />
+          <h2 className="text-white text-xl font-bold mb-4">Movie not found</h2>
+          <button className="skeu-btn px-6 py-3 rounded-xl text-white font-semibold" onClick={() => navigate(-1)}>
             Go Back
-          </motion.button>
+          </button>
         </div>
       </div>
     );
   }
 
-  const {
-    title,
-    poster,
-    releaseDate,
-    rating,
-    genres = [],
-    overview,
-    trailerUrl
-  } = movie;
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ background: '#0a0a14' }}>
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 rounded-full animate-spin"
+            style={{ border: '3px solid rgba(229,9,20,0.2)', borderTop: '3px solid #e50914' }} />
+          <p className="text-gray-400 text-sm">Loading movie details...</p>
+        </div>
+      </div>
+    );
+  }
 
+  const { title, poster, releaseDate, rating, genres = [], overview, tmdbId, type = 'movie' } = movie;
   const releaseYear = releaseDate ? releaseDate.split('-')[0] : 'N/A';
-
-  // More realistic cast data with roles
-  const cast = [
-    { name: 'Actor One', role: 'Main Character' },
-    { name: 'Actor Two', role: 'Supporting Role' },
-    { name: 'Actor Three', role: 'Villain' },
-    { name: 'Actor Four', role: 'Sidekick' },
-  ];
 
   const handleLike = () => {
     const existing = JSON.parse(localStorage.getItem('likedMovies') || '[]');
     const updated = liked
       ? existing.filter(m => m.title !== title)
-      : [...existing, { 
-          title, 
-          poster: poster || '',
-          rating,
-          releaseYear
-        }];
+      : [...existing, { title, poster: poster || '', rating, releaseYear }];
     localStorage.setItem('likedMovies', JSON.stringify(updated));
     setLiked(!liked);
   };
@@ -80,11 +87,16 @@ const MovieDetail = () => {
     const existing = JSON.parse(localStorage.getItem('watchedMovies') || '[]');
     const updated = watched
       ? existing.filter(m => m.title !== title)
-      : [...existing, { 
-          title, 
+      : [...existing, {
+          title,
           poster: poster || '',
           rating,
           releaseYear,
+          releaseDate,
+          genres,
+          overview,
+          tmdbId,
+          type,
           watchedDate: new Date().toISOString()
         }];
     localStorage.setItem('watchedMovies', JSON.stringify(updated));
@@ -92,259 +104,270 @@ const MovieDetail = () => {
   };
 
   const handleShare = () => {
-    setShared(true);
     navigator.clipboard.writeText(window.location.href);
+    setShared(true);
     setTimeout(() => setShared(false), 2000);
   };
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-900">
-        <div className="animate-pulse text-white">Loading...</div>
-      </div>
-    );
-  }
+  const handleWatch = () => {
+    navigate('/watch', { state: { title, tmdbId, type, poster, rating, genres, overview } });
+  };
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.5 }}
-      className="min-h-screen bg-gradient-to-b from-gray-900 to-gray-800 text-white"
-    >
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        {/* Back Button */}
-        <motion.button
-          whileHover={{ x: -5 }}
-          onClick={() => navigate(-1)}
-          className="flex items-center mb-8 text-gray-300 hover:text-white transition-colors"
-        >
-          <FaArrowLeft className="mr-2" />
-          Back to Movies
-        </motion.button>
+    <div className="min-h-screen" style={{ background: 'linear-gradient(135deg, #080810 0%, #0a0a14 100%)' }}>
 
-        {/* Movie Content */}
-        <div className="flex flex-col lg:flex-row gap-8">
-          {/* Left Column - Poster */}
-          <motion.div 
-            initial={{ x: -50, opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-            transition={{ delay: 0.2 }}
-            className="lg:w-1/3"
-          >
-            <div className="relative rounded-xl overflow-hidden shadow-2xl">
+      {/* Hero Banner */}
+      <div className="relative h-80 overflow-hidden">
+        {poster && (
+          <>
+            <img src={poster} alt={title} className="w-full h-full object-cover object-top scale-110"
+              style={{ filter: 'blur(8px)', opacity: 0.3 }} />
+            <div className="absolute inset-0" style={{ background: 'linear-gradient(to bottom, rgba(8,8,16,0.3) 0%, rgba(8,8,16,0.95) 100%)' }} />
+          </>
+        )}
+        <div className="absolute inset-0 flex items-end px-6 pb-6">
+          <div className="container mx-auto">
+            <button
+              className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors text-sm mb-4"
+              onClick={() => navigate(-1)}
+            >
+              <ArrowLeft className="w-4 h-4" /> Back
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="container mx-auto px-6 -mt-32 relative z-10 pb-16">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+
+          {/* Left - Poster & Actions */}
+          <div className="lg:col-span-1">
+            {/* Poster */}
+            <div className="poster-card overflow-hidden mb-6" style={{ borderRadius: '16px' }}>
               {poster ? (
-                <img
-                  src={poster}
-                  alt={title}
-                  className="w-full h-auto object-cover transition-transform hover:scale-105 duration-500"
-                  loading="lazy"
-                />
+                <img src={poster} alt={title} className="w-full h-auto object-cover" loading="lazy" />
               ) : (
-                <div className="w-full h-96 bg-gray-700 flex items-center justify-center text-gray-400">
-                  No Image Available
+                <div className="w-full h-80 flex items-center justify-center"
+                  style={{ background: 'linear-gradient(145deg, #1a1a2e, #16213e)' }}>
+                  <Film className="w-16 h-16 text-gray-600" />
                 </div>
               )}
-              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black to-transparent p-4">
-                <div className="flex items-center">
-                  <FaStar className="text-yellow-400 mr-1" />
-                  <span className="font-bold">{rating ?? 'N/A'}</span>
-                  <span className="mx-2">•</span>
-                  <span>{releaseYear}</span>
+            </div>
+
+            {/* Watch Button */}
+            <button className="skeu-btn w-full py-4 rounded-xl text-white font-bold text-base flex items-center justify-center gap-3 mb-3"
+              onClick={handleWatch}>
+              <Play className="w-5 h-5 fill-white" />
+              Watch Now
+            </button>
+
+            {/* Action Buttons */}
+            <div className="grid grid-cols-3 gap-2 mb-4">
+              <button
+                className="flex flex-col items-center gap-1.5 py-3 rounded-xl text-xs font-semibold transition-all"
+                style={{
+                  background: liked ? 'rgba(229,9,20,0.2)' : 'rgba(255,255,255,0.04)',
+                  border: `1px solid ${liked ? 'rgba(229,9,20,0.4)' : 'rgba(255,255,255,0.08)'}`,
+                  color: liked ? '#ff6b6b' : '#9ca3af'
+                }}
+                onClick={handleLike}
+              >
+                <Heart className={`w-4 h-4 ${liked ? 'fill-current' : ''}`} />
+                {liked ? 'Liked' : 'Like'}
+              </button>
+
+              <button
+                className="flex flex-col items-center gap-1.5 py-3 rounded-xl text-xs font-semibold transition-all"
+                style={{
+                  background: watched ? 'rgba(34,197,94,0.15)' : 'rgba(255,255,255,0.04)',
+                  border: `1px solid ${watched ? 'rgba(34,197,94,0.3)' : 'rgba(255,255,255,0.08)'}`,
+                  color: watched ? '#4ade80' : '#9ca3af'
+                }}
+                onClick={handleWatched}
+              >
+                <Eye className={`w-4 h-4 ${watched ? 'fill-current' : ''}`} />
+                {watched ? 'Watched' : 'Watched'}
+              </button>
+
+              <button
+                className="flex flex-col items-center gap-1.5 py-3 rounded-xl text-xs font-semibold transition-all"
+                style={{
+                  background: shared ? 'rgba(59,130,246,0.15)' : 'rgba(255,255,255,0.04)',
+                  border: `1px solid ${shared ? 'rgba(59,130,246,0.3)' : 'rgba(255,255,255,0.08)'}`,
+                  color: shared ? '#60a5fa' : '#9ca3af'
+                }}
+                onClick={handleShare}
+              >
+                {shared ? <Check className="w-4 h-4" /> : <Share2 className="w-4 h-4" />}
+                {shared ? 'Copied!' : 'Share'}
+              </button>
+            </div>
+
+            {/* Movie Meta */}
+            <div className="skeu-card p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-gray-500 text-xs">Rating</span>
+                <div className="flex items-center gap-1">
+                  <Star className="w-3.5 h-3.5 text-yellow-400 fill-yellow-400" />
+                  <span className="text-yellow-400 font-bold text-sm">{rating ?? 'N/A'}</span>
+                  <span className="text-gray-500 text-xs">/10</span>
                 </div>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-gray-500 text-xs">Year</span>
+                <div className="flex items-center gap-1">
+                  <Calendar className="w-3.5 h-3.5 text-gray-400" />
+                  <span className="text-gray-300 text-sm">{releaseYear}</span>
+                </div>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-gray-500 text-xs">Type</span>
+                <span className="text-xs px-2 py-0.5 rounded-full font-medium"
+                  style={{ background: 'rgba(229,9,20,0.15)', color: '#ff6b6b', border: '1px solid rgba(229,9,20,0.2)' }}>
+                  {type === 'tv' ? 'TV Show' : 'Movie'}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Right - Details */}
+          <div className="lg:col-span-3 space-y-6">
+
+            {/* Title & Genres */}
+            <div>
+              <h1 className="text-4xl lg:text-5xl font-black text-white mb-4 leading-tight">{title}</h1>
+              <div className="flex flex-wrap gap-2">
+                {genres.map((genre, i) => (
+                  <span key={i} className="px-3 py-1 rounded-full text-xs font-semibold"
+                    style={{ background: 'rgba(229,9,20,0.15)', color: '#ff6b6b', border: '1px solid rgba(229,9,20,0.25)' }}>
+                    {genre}
+                  </span>
+                ))}
               </div>
             </div>
 
-            {/* Action Buttons */}
-            <div className="mt-6 flex flex-wrap gap-3">
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={handleWatched}
-                className={`flex items-center px-4 py-2 rounded-full ${watched ? 'bg-green-600 hover:bg-green-700' : 'bg-gray-700 hover:bg-gray-600'} transition-colors`}
-              >
-                {watched ? <FaEye className="mr-2" /> : <FaRegEye className="mr-2" />}
-                {watched ? 'Watched' : 'Mark Watched'}
-              </motion.button>
-
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={handleLike}
-                className={`flex items-center px-4 py-2 rounded-full ${liked ? 'bg-red-600 hover:bg-red-700' : 'bg-gray-700 hover:bg-gray-600'} transition-colors`}
-              >
-                {liked ? <FaHeart className="mr-2" /> : <FaRegHeart className="mr-2" />}
-                {liked ? 'Liked' : 'Like'}
-              </motion.button>
-
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={handleShare}
-                className="flex items-center px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-full transition-colors"
-              >
-                <FaShare className="mr-2" />
-                Share
-              </motion.button>
-
-              {shared && (
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="flex items-center text-green-400 ml-2"
-                >
-                  <FaCheck className="mr-1" />
-                  <span>Copied!</span>
-                </motion.div>
-              )}
-            </div>
-          </motion.div>
-
-          {/* Right Column - Details */}
-          <motion.div 
-            initial={{ x: 50, opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-            transition={{ delay: 0.3 }}
-            className="lg:w-2/3"
-          >
-            <h1 className="text-4xl font-bold mb-2">{title}</h1>
-            
-            {/* Genres */}
-            <div className="flex flex-wrap gap-2 mb-6">
-              {genres.map((genre, index) => (
-                <span 
-                  key={index} 
-                  className="px-3 py-1 bg-gray-700 rounded-full text-sm"
-                >
-                  {genre}
-                </span>
-              ))}
-            </div>
-
             {/* Overview */}
-            <div className="mb-8">
-              <h2 className="text-xl font-semibold mb-3">Overview</h2>
-              <p className="text-gray-300 leading-relaxed">
-                {overview || 'No description available.'}
-              </p>
+            <div className="skeu-card p-6">
+              <h2 className="text-white font-bold text-lg mb-3">Overview</h2>
+              <p className="text-gray-400 leading-relaxed">{overview || 'No description available.'}</p>
             </div>
 
             {/* Trailer */}
-            <div className="mb-8">
-              <h2 className="text-xl font-semibold mb-3">Trailer</h2>
-              {trailerUrl ? (
-                <div className="aspect-w-16 aspect-h-9 rounded-xl overflow-hidden shadow-lg">
+            <div className="skeu-card p-6">
+              <h2 className="text-white font-bold text-lg mb-4 flex items-center gap-2">
+                <Play className="w-5 h-5 text-red-500" />
+                Trailer
+              </h2>
+              {trailer ? (
+                <div className="relative rounded-xl overflow-hidden" style={{ paddingBottom: '56.25%' }}>
                   <iframe
-                    src={trailerUrl}
+                    src={trailer.replace('watch?v=', 'embed/')}
                     title={`${title} Trailer`}
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                     allowFullScreen
-                    className="w-full h-64 md:h-96"
+                    className="absolute inset-0 w-full h-full"
+                    style={{ borderRadius: '12px' }}
                   />
                 </div>
               ) : (
-                <div className="bg-gray-700 h-48 flex items-center justify-center rounded-xl text-gray-400 italic">
-                  Trailer not available
+                <div className="flex flex-col items-center justify-center py-12 rounded-xl"
+                  style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                  <Play className="w-10 h-10 text-gray-600 mb-3" />
+                  <p className="text-gray-500 text-sm">Trailer not available</p>
                 </div>
               )}
             </div>
 
             {/* Cast */}
-            <div className="mb-8">
-              <h2 className="text-xl font-semibold mb-3">Cast</h2>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {cast.map((person, index) => (
-                  <motion.div 
-                    whileHover={{ y: -5 }}
-                    key={index}
-                    className="bg-gray-800 p-4 rounded-lg shadow"
-                  >
-                    <div className="w-16 h-16 rounded-full bg-gray-700 flex items-center justify-center text-xl font-bold mb-2 mx-auto">
-                      {person.name.charAt(0)}
+            <div className="skeu-card p-6">
+              <h2 className="text-white font-bold text-lg mb-5">Cast</h2>
+              {cast.length > 0 ? (
+                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-4">
+                  {cast.map((person, i) => (
+                    <div key={i} className="text-center group">
+                      <div className="relative mx-auto mb-2 rounded-full overflow-hidden"
+                        style={{ width: '64px', height: '64px', boxShadow: '0 4px 12px rgba(0,0,0,0.5)', border: '2px solid rgba(255,255,255,0.08)' }}>
+                        {person.profile_path ? (
+                          <img
+                            src={`https://image.tmdb.org/t/p/w185${person.profile_path}`}
+                            alt={person.name}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-white font-bold text-lg"
+                            style={{ background: 'linear-gradient(145deg, #1a1a2e, #16213e)' }}>
+                            <User className="w-6 h-6 text-gray-500" />
+                          </div>
+                        )}
+                      </div>
+                      <p className="text-white text-xs font-semibold truncate">{person.name}</p>
+                      <p className="text-gray-500 text-xs truncate">{person.character}</p>
                     </div>
-                    <h3 className="font-medium text-center">{person.name}</h3>
-                    <p className="text-gray-400 text-sm text-center">{person.role}</p>
-                  </motion.div>
-                ))}
-              </div>
-            </div>
-
-            {/* Comments Section */}
-            <div className="mt-8 pt-6 border-t border-gray-700">
-              <h2 className="text-xl font-semibold mb-4">Comments</h2>
-
-              {/* Comment Input */}
-              <div className="mb-6">
-                <textarea
-                  className="w-full p-4 rounded-xl bg-gray-700 text-white border border-gray-600 focus:border-red-500 focus:outline-none transition-colors"
-                  placeholder="Leave a comment..."
-                  rows={3}
-                  disabled
-                />
-                <div className="flex justify-between items-center mt-3">
-                  <p className="text-gray-400 text-sm italic">Commenting coming soon...</p>
-                  <button
-                    className="px-6 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg disabled:opacity-50 transition-colors"
-                    disabled
-                  >
-                    Post Comment
-                  </button>
+                  ))}
                 </div>
-              </div>
-
-              {/* Sample Comments */}
-              <div className="space-y-4">
-                <motion.div 
-                  whileHover={{ x: 5 }}
-                  className="bg-gray-800 p-4 rounded-xl shadow"
-                >
-                  <div className="flex items-start mb-2">
-                    <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center mr-3">
-                      U
-                    </div>
-                    <div>
-                      <h4 className="font-medium">user123</h4>
-                      <div className="flex items-center text-yellow-400 text-sm">
-                        <FaStar />
-                        <FaStar />
-                        <FaStar />
-                        <FaStar />
-                        <FaRegStar />
-                      </div>
-                    </div>
-                  </div>
-                  <p className="text-gray-300">Absolutely loved this movie. Timeless classic! 🙌</p>
-                  <p className="text-gray-500 text-xs mt-2">2 days ago</p>
-                </motion.div>
-
-                <motion.div 
-                  whileHover={{ x: 5 }}
-                  className="bg-gray-800 p-4 rounded-xl shadow"
-                >
-                  <div className="flex items-start mb-2">
-                    <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center mr-3">
-                      C
-                    </div>
-                    <div>
-                      <h4 className="font-medium">cinephile</h4>
-                      <div className="flex items-center text-yellow-400 text-sm">
-                        <FaStar />
-                        <FaStar />
-                        <FaStar />
-                        <FaStar />
-                        <FaStar />
-                      </div>
-                    </div>
-                  </div>
-                  <p className="text-gray-300">That ending still gives me chills. Masterpiece! 💯</p>
-                  <p className="text-gray-500 text-xs mt-2">1 week ago</p>
-                </motion.div>
-              </div>
+              ) : (
+                <div className="text-center py-8">
+                  <User className="w-10 h-10 text-gray-600 mx-auto mb-3" />
+                  <p className="text-gray-500 text-sm">Cast information not available</p>
+                </div>
+              )}
             </div>
-          </motion.div>
+
+            {/* Reviews */}
+            <div className="skeu-card p-6">
+              <h2 className="text-white font-bold text-lg mb-5">Reviews</h2>
+              {reviews.length > 0 ? (
+                <div className="space-y-4">
+                  {reviews.map((review, i) => (
+                    <div key={i} className="p-4 rounded-xl transition-all"
+                      style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                      <div className="flex items-center gap-3 mb-3">
+                        <div className="w-9 h-9 rounded-full overflow-hidden flex-shrink-0"
+                          style={{ border: '2px solid rgba(229,9,20,0.3)' }}>
+                          {review.author_details?.avatar_path ? (
+                            <img
+                              src={review.author_details.avatar_path.startsWith('/https')
+                                ? review.author_details.avatar_path.slice(1)
+                                : `https://image.tmdb.org/t/p/w45${review.author_details.avatar_path}`}
+                              alt={review.author}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-white text-sm font-bold"
+                              style={{ background: 'linear-gradient(145deg, #e50914, #b8070f)' }}>
+                              {review.author.charAt(0).toUpperCase()}
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-white font-semibold text-sm">{review.author}</span>
+                            {review.author_details?.rating && (
+                              <div className="flex items-center gap-1 px-2 py-0.5 rounded-full"
+                                style={{ background: 'rgba(234,179,8,0.15)', border: '1px solid rgba(234,179,8,0.2)' }}>
+                                <Star className="w-3 h-3 text-yellow-400 fill-yellow-400" />
+                                <span className="text-yellow-400 text-xs font-bold">{review.author_details.rating}/10</span>
+                              </div>
+                            )}
+                          </div>
+                          <p className="text-gray-500 text-xs">{new Date(review.created_at).toLocaleDateString()}</p>
+                        </div>
+                      </div>
+                      <p className="text-gray-400 text-sm leading-relaxed line-clamp-4">{review.content}</p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <Star className="w-10 h-10 text-gray-600 mx-auto mb-3" />
+                  <p className="text-gray-500 text-sm">No reviews available</p>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 };
 
