@@ -1,0 +1,54 @@
+{
+  "expo": {
+    "name": "MyFlix",
+    "slug": "myflix",
+    "version": "0.0.1",
+    "orientation": "portrait",
+    "icon": "./assets/images/android-chrome-512x512.png",
+    "scheme": "myflix",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.myflix.app"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/android-chrome-512x512.png",
+        "backgroundColor": "#0a0a14"
+      },
+      "package": "com.myflix.app",
+      "edgeToEdgeEnabled": true,
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "output": "static",
+      "favicon": "./assets/images/favicon-32x32.png"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/android-chrome-192x192.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#0a0a14",
+          "dark": {
+            "backgroundColor": "#0a0a14"
+          }
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "dfea337a-9e49-4acc-a447-53fee98d5965"
+      }
+    }
+  }
+}
