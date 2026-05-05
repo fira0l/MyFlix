@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Play, Star, TrendingUp, Tv, Film, ChevronRight, ChevronLeft, Bookmark, Clock, PlayCircle, Info } from 'lucide-react';
+import { Play, Star, TrendingUp, Tv, Film, ChevronRight, ChevronLeft, Bookmark, Clock, PlayCircle, Info, Download, Smartphone } from 'lucide-react';
 import { userAPI } from '../services/api';
 
 const TMDB_KEY = '3fccfc43ac857c99ed340ba2c03bd1e9';
@@ -157,6 +157,15 @@ const Landing = () => {
                       <Info className="w-5 h-5" />
                       More Info
                     </button>
+                    <a
+                      href="https://expo.dev/artifacts/eas/68yaeJS7KHFUWeP6HGC6Qe.apk"
+                      download
+                      className="flex items-center gap-3 px-8 py-4 rounded-xl text-white font-semibold text-base transition-all hover:scale-105 active:scale-95"
+                      style={{ background: 'linear-gradient(145deg, rgba(34,197,94,0.2), rgba(22,163,74,0.1))', border: '1px solid rgba(34,197,94,0.4)', backdropFilter: 'blur(8px)' }}
+                    >
+                      <Download className="w-5 h-5 text-green-400" />
+                      <span style={{ color: '#4ade80' }}>Download Mobile APK</span>
+                    </a>
                   </div>
                 </div>
               )}
@@ -394,6 +403,48 @@ const Landing = () => {
           </div>
         </section>
       )}
+
+      {/* Mobile App Download Banner */}
+      <section className="py-20 px-6">
+        <div className="container mx-auto">
+          <div className="skeu-card p-10 max-w-4xl mx-auto relative overflow-hidden">
+            <div className="absolute inset-0 opacity-5"
+              style={{ background: 'radial-gradient(circle at 80% 50%, #22c55e, transparent)' }} />
+            <div className="flex flex-col md:flex-row items-center gap-8 relative z-10">
+              {/* Icon */}
+              <div className="flex-shrink-0 w-24 h-24 rounded-3xl flex items-center justify-center"
+                style={{ background: 'linear-gradient(145deg, rgba(34,197,94,0.25), rgba(22,163,74,0.1))', border: '1px solid rgba(34,197,94,0.4)' }}>
+                <Smartphone className="w-12 h-12 text-green-400" />
+              </div>
+              {/* Text */}
+              <div className="flex-1 text-center md:text-left">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold mb-3"
+                  style={{ background: 'rgba(34,197,94,0.15)', border: '1px solid rgba(34,197,94,0.3)', color: '#4ade80' }}>
+                  ✨ Now Available
+                </div>
+                <h2 className="text-2xl font-black text-white mb-2">MyFlix Mobile App <span className="text-green-400">v0.0.1</span></h2>
+                <p className="text-gray-400 text-sm leading-relaxed">
+                  Take MyFlix anywhere with our native Android app. Browse, bookmark, and stream your favourite movies and TV shows directly from your phone.
+                </p>
+              </div>
+              {/* Download Button */}
+              <a
+                href="https://expo.dev/artifacts/eas/68yaeJS7KHFUWeP6HGC6Qe.apk"
+                download
+                className="flex-shrink-0 flex items-center gap-3 px-8 py-4 rounded-xl font-bold text-base transition-all hover:scale-105 active:scale-95"
+                style={{
+                  background: 'linear-gradient(145deg, #22c55e, #16a34a)',
+                  boxShadow: '0 4px 20px rgba(34,197,94,0.4), inset 0 1px 0 rgba(255,255,255,0.2)',
+                  color: 'white'
+                }}
+              >
+                <Download className="w-5 h-5" />
+                Download Mobile APK
+              </a>
+            </div>
+          </div>
+        </div>
+      </section>
 
       {/* Footer */}
       <footer className="border-t py-8 px-6" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
