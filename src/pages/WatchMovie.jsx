@@ -164,7 +164,7 @@ const WatchMovie = () => {
 
           {/* Player */}
           <div className="xl:col-span-3 space-y-4">
-            <div className="skeu-card overflow-hidden">
+            <div className="skeu-card">
               <div className="relative w-full" style={{ paddingBottom: '56.25%', background: '#000' }}>
                 {streamError && currentSource >= streamSources.length - 1 ? (
                   <div className="absolute inset-0 flex flex-col items-center justify-center gap-4"
@@ -181,7 +181,7 @@ const WatchMovie = () => {
                     className="absolute inset-0 w-full h-full"
                     frameBorder="0"
                     allowFullScreen
-                    allow="autoplay; fullscreen; picture-in-picture"
+                    allow="autoplay; fullscreen *; picture-in-picture; encrypted-media"
                     title={`Watch ${title}`}
                     onError={() => {
                       if (currentSource < streamSources.length - 1) setCurrentSource(prev => prev + 1);
