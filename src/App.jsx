@@ -1,4 +1,5 @@
 import { Routes, Route } from "react-router-dom";
+import { Analytics } from "@vercel/analytics/react";
 import Navbar from "./components/Navbar";
 import Landing from "./pages/Home";
 import Search from "./pages/Search";
@@ -41,6 +42,7 @@ function App() {
           {/* Add more routes as needed */}
         </Routes>
       </div>
+      <Analytics />
     </div>
   );
 }
